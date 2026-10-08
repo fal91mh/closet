@@ -1,0 +1,136 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon.png"><meta name="theme-color" content="#2d5b87">
+<title>クローゼット</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f2f4f6;--card:#fff;--ink:#1c2630;--sub:#66727e;--line:#d9dfe5;--ac:#2d5b87;--acf:#fff;--danger:#b3372f;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12171c;--card:#1b232b;--ink:#e8edf1;--sub:#93a0ac;--line:#2f3a45;--ac:#7fb0dd;--acf:#0d1319;--danger:#e6786f}}
+:root[data-theme="dark"]{--bg:#12171c;--card:#1b232b;--ink:#e8edf1;--sub:#93a0ac;--line:#2f3a45;--ac:#7fb0dd;--acf:#0d1319;--danger:#e6786f}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif}
+header{display:flex;gap:8px;align-items:center;padding:12px 14px}
+h1{font-size:19px;margin:0;flex:1}h2{font-size:17px;margin:12px 0 4px}
+.tabs{display:flex;gap:4px;padding:0 14px 10px}
+.tab{flex:1;padding:9px;border:0;border-bottom:2px solid var(--line);background:none;color:var(--sub);font-weight:700}
+.tab.on{color:var(--ac);border-color:var(--ac)}
+.bar{display:flex;gap:8px;padding:0 14px 10px}
+input,select,textarea{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;box-sizing:border-box}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.btn{background:var(--ac);color:var(--acf);border:0;border-radius:8px;padding:9px 14px;font-weight:700;white-space:nowrap}
+.btn.s{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.btn.d{background:none;color:var(--danger);border:1px solid var(--danger)}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px;margin:0 6px 6px 0}
+.chip.on{background:var(--ac);color:var(--acf);border-color:var(--ac)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:0 14px 90px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;text-align:left;padding:0}
+.im{aspect-ratio:3/4;background:var(--line);display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:28px;overflow:hidden}
+.im img,.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.card p{margin:0;padding:8px 10px;font-weight:700;font-size:14px}
+.card small{display:block;color:var(--sub);font-weight:400;min-height:1.5em}
+.fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:56px;height:56px;border-radius:50%;font-size:28px;border:0;background:var(--ac);color:var(--acf)}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center;z-index:9}
+#modal.on{display:flex}
+.sheet{background:var(--bg);width:100%;max-width:560px;max-height:92%;overflow-y:auto;border-radius:16px 16px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px));box-sizing:border-box}
+.g{margin:12px 0}.g>b{display:block;font-size:13px;color:var(--sub);margin-bottom:6px}
+.ph{display:flex;aspect-ratio:3/4;max-height:260px;margin:0 auto;background:var(--line);border-radius:10px;overflow:hidden;align-items:center;justify-content:center;color:var(--sub);cursor:pointer}
+.row{display:flex;gap:8px;margin-top:12px}
+.add{display:flex;gap:6px;margin-top:4px}
+.dt{display:grid;grid-template-columns:96px 1fr;gap:4px 8px;margin:12px 0}.dt dt{color:var(--sub)}.dt dd{margin:0;white-space:pre-wrap}
+.pk{width:68px;padding:0;border:2px solid transparent;background:none;border-radius:8px;margin:0 6px 6px 0;font-size:10px;vertical-align:top;text-align:left}
+.pk.on{border-color:var(--ac)}.pk .im{border-radius:6px}
+.empty{color:var(--sub);text-align:center;padding:40px 14px;grid-column:1/-1}
+</style></head><body>
+<div id="app"></div><div id="modal"></div>
+<script>
+const $=s=>document.querySelector(s),h=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const CATS=['トップス','ボトムス','アウター','靴','バッグ','アクセサリー','その他'],SEAS=['春','夏','秋','冬','通年'],CONDS=['良好','要修理','手放す予定'],FREQ=['未使用','1〜2回','3回以上'],SLOTS=['トップス','ボトムス','アウター','靴','バッグ'],MULTI=['color','style','season'];
+const LBL={cat:'カテゴリ',sub:'サブカテゴリ',color:'色',style:'系統',season:'季節',sil:'シルエット',brand:'ブランド',cond:'状態',freq:'使用頻度'};
+let S={items:[],outfits:[],opts:{sub:['Tシャツ','シャツ','ニット','スラックス','デニム','ジャケット'],color:['黒','白','グレー','ネイビー','ベージュ'],style:['きれいめ','カジュアル','ストリート'],sil:['タイト','レギュラー','オーバーサイズ','ワイド']}};
+let tab='items',fo=false,M=null,F=null,Q={q:''};for(const k in LBL)Q[k]=[];
+/* storage */
+const dbp=new Promise(r=>{try{const q=indexedDB.open('closet',1);q.onupgradeneeded=()=>q.result.createObjectStore('k');q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)}catch(e){r(null)}});
+async function load(){const d=await dbp;if(!d)return null;return new Promise(r=>{try{const q=d.transaction('k').objectStore('k').get('s');q.onsuccess=()=>r(q.result||null);q.onerror=()=>r(null)}catch(e){r(null)}})}
+async function save(){const d=await dbp;if(!d)return;try{d.transaction('k','readwrite').objectStore('k').put(S,'s')}catch(e){}}
+const shrink=f=>new Promise(r=>{const u=URL.createObjectURL(f),i=new Image();i.onload=()=>{const s=Math.min(1,640/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=i.width*s;c.height=i.height*s;c.getContext('2d').drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(u);r(c.toDataURL('image/jpeg',.72))};i.onerror=()=>r('');i.src=u});
+/* helpers */
+const uses=id=>S.outfits.filter(o=>SLOTS.some(s=>(o.slots[s]||[]).includes(id))).length;
+const fr=id=>{const n=uses(id);return n?n<3?FREQ[1]:FREQ[2]:FREQ[0]};
+const chip=(a,k,v,on)=>`<button class="chip${on?' on':''}" data-a="${a}" data-k="${k}" data-v="${h(v)}">${h(v)}</button>`;
+const pk=(i,a,k,on)=>`<button class="pk${on?' on':''}" data-a="${a}" data-k="${k||''}" data-v="${i.id}"><div class="im">${i.photo?`<img src="${i.photo}" alt="">`:''}</div>${h(i.name)}</button>`;
+const grp=(l,b)=>`<div class="g"><b>${l}</b>${b}</div>`;
+const addBox=k=>`<div class="add"><input data-n="${k}" placeholder="新しく追加"><button class="btn s" data-a="add" data-k="${k}">追加</button></div>`;
+const oc=(k,arr,d)=>arr.map(c=>chip('fm',k,c,MULTI.includes(k)?d[k].includes(c):d[k]==c)).join('');
+const photoBox=d=>`<label class="ph">${d.photo?`<img src="${d.photo}" alt="">`:'タップして写真を選ぶ'}<input type="file" accept="image/*" data-a="ph" hidden></label>`;
+const fopts=k=>k=='cat'?CATS:k=='season'?SEAS:k=='cond'?CONDS:k=='freq'?FREQ:k=='brand'?[...new Set(S.items.map(i=>i.brand).filter(Boolean))]:S.opts[k];
+function match(it){if(Q.q&&!(it.name+it.memo+it.brand).includes(Q.q))return false;
+ return Object.keys(LBL).every(k=>{if(!Q[k].length)return true;const v=k=='freq'?[fr(it.id)]:[].concat(it[k]||[]);return Q[k].some(x=>v.includes(x))||(k=='season'&&v.includes('通年'))})}
+/* views */
+const card=(a,o,s)=>`<button class="card" data-a="${a}" data-v="${o.id}"><div class="im">${o.photo?`<img src="${o.photo}" alt="">`:h([...o.name][0]||'')}</div><p>${h(o.name)}<small>${h(s)}</small></p></button>`;
+function renderList(){const L=$('#list');
+ if(tab=='outfits'){L.innerHTML=S.outfits.length?S.outfits.map(o=>card('ov',o,o.season.join('・'))).join(''):'<p class="empty">コーデはまだありません。＋から登録できます。</p>';return}
+ const r=S.items.filter(match);L.innerHTML=r.length?r.map(i=>card('iv',i,[i.sub,i.color.join('/')].filter(Boolean).join(' '))).join(''):`<p class="empty">${S.items.length?'条件に合う服がありません。':'服がまだありません。＋から登録できます。'}</p>`}
+function filterUI(){const n=Object.keys(LBL).reduce((a,k)=>a+Q[k].length,0);
+ return `<div class="bar"><input id="q" placeholder="名前・メモ・ブランドで検索" value="${h(Q.q)}"><button class="btn s" data-a="tf">絞り込み${n?' ('+n+')':''}</button></div>`+(fo?`<div style="padding:0 14px">${Object.keys(LBL).map(k=>{const o=fopts(k);return o.length?grp(LBL[k],o.map(v=>chip('f',k,v,Q[k].includes(v))).join('')):''}).join('')}<button class="btn s" data-a="cf">条件をクリア</button></div>`:'')}
+function render(){$('#app').innerHTML=`<header><h1>クローゼット</h1><button class="btn s" data-a="bk">バックアップ</button></header>
+<div class="tabs"><button class="tab${tab=='items'?' on':''}" data-a="tab" data-v="items">服 ${S.items.length}</button><button class="tab${tab=='outfits'?' on':''}" data-a="tab" data-v="outfits">コーデ ${S.outfits.length}</button></div>
+${tab=='items'?filterUI():''}<div class="grid" id="list"></div><button class="fab" data-a="new" aria-label="追加">＋</button>`;renderList()}
+const phView=p=>`<div class="ph" style="cursor:default">${p?`<img src="${p}" alt="">`:'写真なし'}</div>`;
+const dl=r=>`<dl class="dt">${r.map(([a,b])=>`<dt>${a}</dt><dd>${h(b)||'—'}</dd>`).join('')}</dl>`;
+function itemView(id){const i=S.items.find(x=>x.id==id);if(!i)return'';
+ return phView(i.photo)+`<h2>${h(i.name)}</h2>`+dl([['カテゴリ',i.cat],['サブカテゴリ',i.sub],['色',i.color.join('、')],['系統',i.style.join('、')],['季節',i.season.join('、')],['シルエット',i.sil],['ブランド',i.brand],['状態',i.cond],['使用頻度',fr(id)+'(コーデ'+uses(id)+'件)'],['メモ',i.memo]])+`<div class="row"><button class="btn" data-a="ei" data-v="${id}">編集</button><button class="btn d" data-a="di" data-v="${id}">削除</button><button class="btn s" data-a="x">閉じる</button></div>`}
+function outView(id){const o=S.outfits.find(x=>x.id==id);if(!o)return'';
+ const sl=SLOTS.map(s=>(o.slots[s]||[]).length?grp(s,o.slots[s].map(z=>S.items.find(i=>i.id==z)).filter(Boolean).map(i=>pk(i,'iv')).join('')):'').join('');
+ return phView(o.photo)+`<h2>${h(o.name)}</h2>${sl}`+dl([['系統',o.style.join('、')],['季節',o.season.join('、')],['メモ',o.memo]])+`<div class="row"><button class="btn" data-a="eo" data-v="${id}">編集</button><button class="btn d" data-a="do" data-v="${id}">削除</button><button class="btn s" data-a="x">閉じる</button></div>`}
+const btns=a=>`${F.err?`<p style="color:var(--danger)">${F.err}</p>`:''}<div class="row"><button class="btn" data-a="${a}">保存</button><button class="btn s" data-a="x">キャンセル</button></div>`;
+function itemForm(){const d=F.d;return `<h2>${F.e?'服を編集':'服を登録'}</h2>${photoBox(d)}
+<div class="g"><b>名前</b><input data-f="name" value="${h(d.name)}"></div>
+${grp('カテゴリ',oc('cat',CATS,d))}${grp('サブカテゴリ',oc('sub',S.opts.sub,d)+addBox('sub'))}
+${grp('色(複数可)',oc('color',S.opts.color,d)+addBox('color'))}${grp('系統(複数可)',oc('style',S.opts.style,d)+addBox('style'))}
+${grp('季節(複数可)',oc('season',SEAS,d))}${grp('シルエット',oc('sil',S.opts.sil,d)+addBox('sil'))}
+<div class="g"><b>ブランド</b><input data-f="brand" value="${h(d.brand)}"></div>${grp('状態',oc('cond',CONDS,d))}
+<div class="g"><b>メモ</b><textarea rows="3" data-f="memo">${h(d.memo)}</textarea></div>${btns('si')}`}
+function outForm(){const d=F.d;return `<h2>${F.e?'コーデを編集':'コーデを登録'}</h2>${photoBox(d)}
+<div class="g"><b>コーデ名</b><input data-f="name" value="${h(d.name)}"></div>
+${SLOTS.map(s=>{const a=S.items.filter(i=>i.cat==s);return grp(s,a.length?a.map(i=>pk(i,'sl',s,d.slots[s].includes(i.id))).join(''):'<small>この種類の服が未登録です</small>')}).join('')}
+${grp('系統',oc('style',S.opts.style,d)+addBox('style'))}${grp('季節',oc('season',SEAS,d))}
+<div class="g"><b>メモ</b><textarea rows="3" data-f="memo">${h(d.memo)}</textarea></div>${btns('so')}`}
+const bkView=()=>`<h2>バックアップ</h2><p style="color:var(--sub)">ブラウザのデータが消えても戻せるよう、定期的にコピーしてメモ等に保存してください。</p><div class="row"><button class="btn" data-a="cp">データをコピー</button></div><div class="g"><b>復元(コピーしたデータを貼り付け)</b><textarea id="bt" rows="5"></textarea></div><p id="bs" style="color:var(--sub)"></p><div class="row"><button class="btn s" data-a="rs">貼り付けたデータで復元</button><button class="btn s" data-a="x">閉じる</button></div>`;
+function modal(){const m=$('#modal'),y=m.querySelector('.sheet')?.scrollTop||0;
+ if(!M){m.className='';m.innerHTML='';return}
+ m.className='on';m.innerHTML=`<div class="sheet">${M.t=='f'?(F.t=='i'?itemForm():outForm()):M.t=='iv'?itemView(M.id):M.t=='ov'?outView(M.id):bkView()}</div>`;m.querySelector('.sheet').scrollTop=y}
+const done=()=>{save();M=null;modal();render()};
+const blank=()=>tab=='items'?{t:'i',d:{name:'',photo:'',cat:'トップス',sub:'',color:[],style:[],season:[],sil:'',brand:'',cond:'良好',memo:''}}:{t:'o',d:{name:'',photo:'',slots:Object.fromEntries(SLOTS.map(s=>[s,[]])),style:[],season:[],memo:''}};
+/* events */
+document.addEventListener('click',async e=>{
+ if(e.target.id=='modal'){M=null;modal();return}
+ const t=e.target.closest('[data-a]');if(!t)return;const a=t.dataset.a,v=t.dataset.v,k=t.dataset.k;
+ switch(a){
+ case'tab':tab=v;render();break;
+ case'tf':fo=!fo;render();break;
+ case'f':{const x=Q[k],i=x.indexOf(v);i<0?x.push(v):x.splice(i,1);render();break}
+ case'cf':for(const z in LBL)Q[z]=[];render();break;
+ case'new':F=blank();M={t:'f'};modal();break;
+ case'iv':case'ov':M={t:a,id:v};modal();break;
+ case'ei':F={t:'i',e:1,d:structuredClone(S.items.find(x=>x.id==v))};M={t:'f'};modal();break;
+ case'eo':F={t:'o',e:1,d:structuredClone(S.outfits.find(x=>x.id==v))};M={t:'f'};modal();break;
+ case'di':case'do':if(!t.dataset.arm){t.dataset.arm=1;t.textContent='もう一度押して削除';break}
+  if(a=='di'){S.items=S.items.filter(x=>x.id!=v);S.outfits.forEach(o=>SLOTS.forEach(s=>o.slots[s]=(o.slots[s]||[]).filter(z=>z!=v)))}else S.outfits=S.outfits.filter(x=>x.id!=v);
+  done();break;
+ case'x':M=null;modal();break;
+ case'fm':{const d=F.d;if(MULTI.includes(k)){const i=d[k].indexOf(v);i<0?d[k].push(v):d[k].splice(i,1)}else d[k]=(d[k]==v&&(k=='sub'||k=='sil'))?'':v;modal();break}
+ case'sl':{const x=F.d.slots[k],i=x.indexOf(v);i<0?x.push(v):x.splice(i,1);modal();break}
+ case'add':{const n=$(`[data-n="${k}"]`).value.trim();if(n){if(!S.opts[k].includes(n))S.opts[k].push(n);const d=F.d;MULTI.includes(k)?(d[k].includes(n)||d[k].push(n)):d[k]=n;save();modal()}break}
+ case'si':case'so':{const d=F.d;d.name=d.name.trim();if(!d.name){F.err='名前を入力してください。';modal();break}
+  const L=a=='si'?'items':'outfits';if(F.e)S[L]=S[L].map(x=>x.id==d.id?d:x);else S[L].unshift({...d,id:uid()});done();break}
+ case'bk':M={t:'b'};modal();break;
+ case'cp':try{await navigator.clipboard.writeText(JSON.stringify(S));$('#bs').textContent='コピーしました。'}catch(err){$('#bs').textContent='コピーできませんでした。'}break;
+ case'rs':try{const j=JSON.parse($('#bt').value);if(!Array.isArray(j.items)||!Array.isArray(j.outfits)||!j.opts)throw 0;S=j;done()}catch(err){$('#bs').textContent='データを読み込めませんでした。'}break;
+ }});
+document.addEventListener('input',e=>{const t=e.target;if(t.dataset.f&&F)F.d[t.dataset.f]=t.value;if(t.id=='q'){Q.q=t.value;renderList()}});
+document.addEventListener('change',async e=>{const t=e.target;if(t.dataset.a=='ph'&&t.files[0]){F.d.photo=await shrink(t.files[0]);modal()}});
+(async()=>{try{navigator.storage?.persist?.()}catch(e){}const s=await load();if(s&&s.items&&s.outfits&&s.opts)S=s;render()})();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script></body></html>
