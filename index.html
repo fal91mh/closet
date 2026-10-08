@@ -54,7 +54,7 @@ let tab='items',fo=false,M=null,F=null,Q={q:''};for(const k in LBL)Q[k]=[];
 const dbp=new Promise(r=>{try{const q=indexedDB.open('closet',1);q.onupgradeneeded=()=>q.result.createObjectStore('k');q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)}catch(e){r(null)}});
 async function load(){const d=await dbp;if(!d)return null;return new Promise(r=>{try{const q=d.transaction('k').objectStore('k').get('s');q.onsuccess=()=>r(q.result||null);q.onerror=()=>r(null)}catch(e){r(null)}})}
 async function save(){const d=await dbp;if(!d)return;try{d.transaction('k','readwrite').objectStore('k').put(S,'s')}catch(e){}}
-const shrink=f=>new Promise(r=>{const u=URL.createObjectURL(f),i=new Image();i.onload=()=>{const s=Math.min(1,640/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=i.width*s;c.height=i.height*s;c.getContext('2d').drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(u);r(c.toDataURL('image/jpeg',.72))};i.onerror=()=>r('');i.src=u});
+const shrink=f=>new Promise(r=>{const u=URL.createObjectURL(f),i=new Image();i.onload=()=>{const s=Math.min(1,480/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=i.width*s;c.height=i.height*s;c.getContext('2d').drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(u);r(c.toDataURL('image/jpeg',.65))};i.onerror=()=>r('');i.src=u});
 /* helpers */
 const uses=id=>S.outfits.filter(o=>SLOTS.some(s=>(o.slots[s]||[]).includes(id))).length;
 const fr=id=>{const n=uses(id);return n?n<3?FREQ[1]:FREQ[2]:FREQ[0]};
@@ -97,7 +97,7 @@ function outForm(){const d=F.d;return `<h2>${F.e?'コーデを編集':'コーデ
 ${SLOTS.map(s=>{const a=S.items.filter(i=>i.cat==s);return grp(s,a.length?a.map(i=>pk(i,'sl',s,d.slots[s].includes(i.id))).join(''):'<small>この種類の服が未登録です</small>')}).join('')}
 ${grp('系統',oc('style',S.opts.style,d)+addBox('style'))}${grp('季節',oc('season',SEAS,d))}
 <div class="g"><b>メモ</b><textarea rows="3" data-f="memo">${h(d.memo)}</textarea></div>${btns('so')}`}
-const bkView=()=>`<h2>バックアップ</h2><p style="color:var(--sub)">ブラウザのデータが消えても戻せるよう、定期的にコピーしてメモ等に保存してください。</p><div class="row"><button class="btn" data-a="cp">データをコピー</button></div><div class="g"><b>復元(コピーしたデータを貼り付け)</b><textarea id="bt" rows="5"></textarea></div><p id="bs" style="color:var(--sub)"></p><div class="row"><button class="btn s" data-a="rs">貼り付けたデータで復元</button><button class="btn s" data-a="x">閉じる</button></div>`;
+const bkView=()=>`<h2>バックアップ</h2><p style="color:var(--sub)">写真を含むデータをファイルとして保存します。保存先は「ファイルに保存」を選ぶとiCloud Driveなどに置けます。</p><div class="row"><button class="btn" data-a="sv">ファイルとして保存</button></div><div class="g"><b>復元</b><label class="btn s" style="display:inline-block">保存したファイルを選ぶ<input type="file" accept=".json,application/json" data-a="rf" hidden></label></div><p id="bs" style="color:var(--sub)"></p><div class="row"><button class="btn s" data-a="x">閉じる</button></div>`;
 function modal(){const m=$('#modal'),y=m.querySelector('.sheet')?.scrollTop||0;
  if(!M){m.className='';m.innerHTML='';return}
  m.className='on';m.innerHTML=`<div class="sheet">${M.t=='f'?(F.t=='i'?itemForm():outForm()):M.t=='iv'?itemView(M.id):M.t=='ov'?outView(M.id):bkView()}</div>`;m.querySelector('.sheet').scrollTop=y}
@@ -126,11 +126,13 @@ document.addEventListener('click',async e=>{
  case'si':case'so':{const d=F.d;d.name=d.name.trim();if(!d.name){F.err='名前を入力してください。';modal();break}
   const L=a=='si'?'items':'outfits';if(F.e)S[L]=S[L].map(x=>x.id==d.id?d:x);else S[L].unshift({...d,id:uid()});done();break}
  case'bk':M={t:'b'};modal();break;
- case'cp':try{await navigator.clipboard.writeText(JSON.stringify(S));$('#bs').textContent='コピーしました。'}catch(err){$('#bs').textContent='コピーできませんでした。'}break;
- case'rs':try{const j=JSON.parse($('#bt').value);if(!Array.isArray(j.items)||!Array.isArray(j.outfits)||!j.opts)throw 0;S=j;done()}catch(err){$('#bs').textContent='データを読み込めませんでした。'}break;
+ case'sv':{const f=new File([JSON.stringify(S)],'closet-backup-'+new Date().toISOString().slice(0,10)+'.json',{type:'application/json'});
+  try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f]});break}}catch(err){if(err.name=='AbortError')break}
+  const u=URL.createObjectURL(f),l=document.createElement('a');l.href=u;l.download=f.name;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),9e3);break}
  }});
 document.addEventListener('input',e=>{const t=e.target;if(t.dataset.f&&F)F.d[t.dataset.f]=t.value;if(t.id=='q'){Q.q=t.value;renderList()}});
-document.addEventListener('change',async e=>{const t=e.target;if(t.dataset.a=='ph'&&t.files[0]){F.d.photo=await shrink(t.files[0]);modal()}});
+document.addEventListener('change',async e=>{const t=e.target;if(t.dataset.a=='ph'&&t.files[0]){F.d.photo=await shrink(t.files[0]);modal()}
+ if(t.dataset.a=='rf'&&t.files[0]){try{const j=JSON.parse(await t.files[0].text());if(!Array.isArray(j.items)||!Array.isArray(j.outfits)||!j.opts)throw 0;S=j;done()}catch(err){$('#bs').textContent='ファイルを読み込めませんでした。'}}});
 (async()=>{try{navigator.storage?.persist?.()}catch(e){}const s=await load();if(s&&s.items&&s.outfits&&s.opts)S=s;render()})();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script></body></html>
