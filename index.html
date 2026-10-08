@@ -49,6 +49,7 @@ const $=s=>document.querySelector(s),h=s=>String(s??'').replace(/[&<>"]/g,c=>({'
 const CATS=['トップス','ボトムス','アウター','靴','バッグ','アクセサリー','その他'],SEAS=['春','夏','秋','冬','通年'],CONDS=['良好','要修理','手放す予定'],FREQ=['未使用','1〜2回','3回以上'],SLOTS=['トップス','ボトムス','アウター','靴','バッグ'],MULTI=['color','style','season'];
 const LBL={cat:'カテゴリ',sub:'サブカテゴリ',color:'色',style:'系統',season:'季節',sil:'シルエット',brand:'ブランド',cond:'状態',freq:'使用頻度'};
 let S={items:[],outfits:[],opts:{sub:['Tシャツ','シャツ','ニット','スラックス','デニム','ジャケット'],color:['黒','白','グレー','ネイビー','ベージュ'],style:['きれいめ','カジュアル','ストリート'],sil:['タイト','レギュラー','オーバーサイズ','ワイド']}};
+let IM={cats:[],url:'',msg:'',blob:null};
 let tab='items',fo=false,M=null,F=null,Q={q:''};for(const k in LBL)Q[k]=[];
 /* storage */
 const dbp=new Promise(r=>{try{const q=indexedDB.open('closet',1);q.onupgradeneeded=()=>q.result.createObjectStore('k');q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)}catch(e){r(null)}});
@@ -74,7 +75,7 @@ function renderList(){const L=$('#list');
  const r=S.items.filter(match);L.innerHTML=r.length?r.map(i=>card('iv',i,[i.sub,i.color.join('/')].filter(Boolean).join(' '))).join(''):`<p class="empty">${S.items.length?'条件に合う服がありません。':'服がまだありません。＋から登録できます。'}</p>`}
 function filterUI(){const n=Object.keys(LBL).reduce((a,k)=>a+Q[k].length,0);
  return `<div class="bar"><input id="q" placeholder="名前・メモ・ブランドで検索" value="${h(Q.q)}"><button class="btn s" data-a="tf">絞り込み${n?' ('+n+')':''}</button></div>`+(fo?`<div style="padding:0 14px">${Object.keys(LBL).map(k=>{const o=fopts(k);return o.length?grp(LBL[k],o.map(v=>chip('f',k,v,Q[k].includes(v))).join('')):''}).join('')}<button class="btn s" data-a="cf">条件をクリア</button></div>`:'')}
-function render(){$('#app').innerHTML=`<header><h1>クローゼット</h1><button class="btn s" data-a="bk">バックアップ</button></header>
+function render(){$('#app').innerHTML=`<header><h1>クローゼット</h1><button class="btn s" data-a="im">画像にする</button><button class="btn s" data-a="bk">バックアップ</button></header>
 <div class="tabs"><button class="tab${tab=='items'?' on':''}" data-a="tab" data-v="items">服 ${S.items.length}</button><button class="tab${tab=='outfits'?' on':''}" data-a="tab" data-v="outfits">コーデ ${S.outfits.length}</button></div>
 ${tab=='items'?filterUI():''}<div class="grid" id="list"></div><button class="fab" data-a="new" aria-label="追加">＋</button>`;renderList()}
 const phView=p=>`<div class="ph" style="cursor:default">${p?`<img src="${p}" alt="">`:'写真なし'}</div>`;
@@ -100,7 +101,25 @@ ${grp('系統',oc('style',S.opts.style,d)+addBox('style'))}${grp('季節',oc('se
 const bkView=()=>`<h2>バックアップ</h2><p style="color:var(--sub)">写真を含むデータをファイルとして保存します。保存先は「ファイルに保存」を選ぶとiCloud Driveなどに置けます。</p><div class="row"><button class="btn" data-a="sv">ファイルとして保存</button></div><div class="g"><b>復元</b><label class="btn s" style="display:inline-block">保存したファイルを選ぶ<input type="file" accept=".json,application/json" data-a="rf" hidden></label></div><p id="bs" style="color:var(--sub)"></p><div class="row"><button class="btn s" data-a="x">閉じる</button></div>`;
 function modal(){const m=$('#modal'),y=m.querySelector('.sheet')?.scrollTop||0;
  if(!M){m.className='';m.innerHTML='';return}
- m.className='on';m.innerHTML=`<div class="sheet">${M.t=='f'?(F.t=='i'?itemForm():outForm()):M.t=='iv'?itemView(M.id):M.t=='ov'?outView(M.id):bkView()}</div>`;m.querySelector('.sheet').scrollTop=y}
+ m.className='on';m.innerHTML=`<div class="sheet">${M.t=='f'?(F.t=='i'?itemForm():outForm()):M.t=='iv'?itemView(M.id):M.t=='ov'?outView(M.id):M.t=='i2'?imgView():bkView()}</div>`;m.querySelector('.sheet').scrollTop=y}
+const imgView=()=>`<h2>服を1枚の画像にする</h2>${grp('カテゴリ(複数選択可)',CATS.map(c=>chip('ic','',c,IM.cats.includes(c))).join(''))}<div class="row"><button class="btn" data-a="mk">画像を作る</button><button class="btn s" data-a="x">閉じる</button></div><p style="color:var(--sub)">${h(IM.msg)}</p>${IM.url?`<img src="${IM.url}" alt="" style="width:100%;border-radius:8px"><div class="row"><button class="btn" data-a="sv2">画像を保存</button></div>`:''}`;
+const clip=(x,t,w)=>{if(x.measureText(t).width<=w)return t;while(t.length>1&&x.measureText(t+'…').width>w)t=t.slice(0,-1);return t+'…'};
+const ld=src=>new Promise(r=>{if(!src)return r(null);const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=src});
+async function mkImg(items){
+ const W=1200,P=40,G=24,N=4,tw=(W-P*2-G*(N-1))/N,th=tw*4/3,LH=44,HD=70;
+ const gs=CATS.filter(c=>IM.cats.includes(c)).map(c=>[c,items.filter(i=>i.cat==c)]).filter(g=>g[1].length);
+ let H=P;for(const[,a]of gs)H+=HD+Math.ceil(a.length/N)*(th+LH+G);H+=P-G;
+ const k=Math.min(1,Math.sqrt(14e6/(W*H))),c=document.createElement('canvas');c.width=Math.round(W*k);c.height=Math.round(H*k);
+ const x=c.getContext('2d');x.scale(k,k);x.fillStyle='#fff';x.fillRect(0,0,W,H);
+ let y=P;
+ for(const[n,a]of gs){x.fillStyle='#1c2630';x.font='700 36px sans-serif';x.fillText(n,P,y+40);y+=HD;
+  for(let j=0;j<a.length;j++){const px=P+(j%N)*(tw+G),py=y+Math.floor(j/N)*(th+LH+G),it=a[j],im=await ld(it.photo);
+   x.fillStyle='#e4e8ec';x.fillRect(px,py,tw,th);
+   if(im){const r=Math.max(tw/im.width,th/im.height),w=im.width*r,hh=im.height*r;x.save();x.beginPath();x.rect(px,py,tw,th);x.clip();x.drawImage(im,px+(tw-w)/2,py+(th-hh)/2,w,hh);x.restore()}
+   else{x.fillStyle='#66727e';x.font='700 60px sans-serif';x.textAlign='center';x.fillText([...it.name][0]||'',px+tw/2,py+th/2+20);x.textAlign='left'}
+   x.fillStyle='#1c2630';x.font='24px sans-serif';x.fillText(clip(x,it.name,tw),px,py+th+30)}
+  y+=Math.ceil(a.length/N)*(th+LH+G)}
+ return new Promise(r=>c.toBlob(r,'image/png'))}
 const done=()=>{save();M=null;modal();render()};
 const blank=()=>tab=='items'?{t:'i',d:{name:'',photo:'',cat:'トップス',sub:'',color:[],style:[],season:[],sil:'',brand:'',cond:'良好',memo:''}}:{t:'o',d:{name:'',photo:'',slots:Object.fromEntries(SLOTS.map(s=>[s,[]])),style:[],season:[],memo:''}};
 /* events */
@@ -125,6 +144,16 @@ document.addEventListener('click',async e=>{
  case'add':{const n=$(`[data-n="${k}"]`).value.trim();if(n){if(!S.opts[k].includes(n))S.opts[k].push(n);const d=F.d;MULTI.includes(k)?(d[k].includes(n)||d[k].push(n)):d[k]=n;save();modal()}break}
  case'si':case'so':{const d=F.d;d.name=d.name.trim();if(!d.name){F.err='名前を入力してください。';modal();break}
   const L=a=='si'?'items':'outfits';if(F.e)S[L]=S[L].map(x=>x.id==d.id?d:x);else S[L].unshift({...d,id:uid()});done();break}
+ case'im':if(IM.url)URL.revokeObjectURL(IM.url);IM={cats:[],url:'',msg:'',blob:null};M={t:'i2'};modal();break;
+ case'ic':{const i=IM.cats.indexOf(v);i<0?IM.cats.push(v):IM.cats.splice(i,1);IM.url='';IM.msg='';modal();break}
+ case'mk':{const its=S.items.filter(i=>IM.cats.includes(i.cat));
+  if(!IM.cats.length||!its.length){IM.msg=IM.cats.length?'選んだカテゴリに服がありません。':'カテゴリを選んでください。';modal();break}
+  IM.msg='作成中…';modal();
+  try{IM.blob=await mkImg(its);if(IM.url)URL.revokeObjectURL(IM.url);IM.url=URL.createObjectURL(IM.blob);IM.msg=its.length+'着を画像にしました。'}catch(err){IM.msg='画像を作れませんでした。服の数が多すぎるかもしれません。';IM.url=''}
+  modal();break}
+ case'sv2':{const f=new File([IM.blob],'closet.png',{type:'image/png'});
+  try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f]});break}}catch(err){if(err.name=='AbortError')break}
+  const l=document.createElement('a');l.href=IM.url;l.download='closet.png';document.body.appendChild(l);l.click();l.remove();break}
  case'bk':M={t:'b'};modal();break;
  case'sv':{const f=new File([JSON.stringify(S)],'closet-backup-'+new Date().toISOString().slice(0,10)+'.json',{type:'application/json'});
   try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f]});break}}catch(err){if(err.name=='AbortError')break}
